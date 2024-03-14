@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+import sys
+import nfa
+
+def main(stream=sys.stdin):
+    one = open(sys.argv[1], 'r')
+    two = open(sys.argv[2], 'r')
+    union = nfa.union_nfa(nfa.read(one), nfa.read(two))
+    nfa.write(union, sys.stdout)
+
+if __name__ == '__main__':
+    main()
+    

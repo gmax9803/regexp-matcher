@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+
+import sys
+from dataclasses import dataclass
+from collections    import deque
+from typing         import Optional, Union
+
+@dataclass
+class symbol:
+    symbol: str
+
+    def __str__(self) -> str:
+        return f'symbol("{self.symbol}")'
+
+@dataclass
+class concat:
+    left:    Union[symbol, 'concat']
+    right:   Union[symbol, 'concat']
+    def __str__(self) -> str:
+        return f'concat({self.left},{self.right})'
+
+@dataclass
+class epsilon:
+    def __str__(self):
+        return 'epsilon()'
+
+@dataclass
+class union:
+    left:   Union['union', symbol, concat, epsilon]
+    right:  Union['union', symbol, concat, epsilon]
+
+    def __str__(self) -> str:
+        return f'union({self.left},{self.right})'
+
+
+@dataclass
+class star:
+    child:  Union['union', symbol, concat, epsilon]
+
+    def __str__(self) -> str:
+        return f'star({self.child})'
+
+
+@dataclass
+class nt: 
+    '''
+    Non-Terminal
+    '''
+    value:  str
+    tree:   concat | epsilon | union | symbol 
+    def __str__(self) -> str:
+        return self.value
+    def __eq__(self, other: object) -> bool:
+        if (type(other) is str):
+            return self.value == other 
+        else:
+            return self == other
+
+
+def next(input: deque, vals: set, i=0):
+    return (input[i] in vals) if len(input) >= i+1 else False 
+
+def below(stack: list[str|nt], vals:set, i: int=2):
+    return (str(stack[-i]) in vals) if len(stack) >= i else True
+
+def stack_is(stack, str):
+    return stack[-1] == str
+
+def curr(input: deque, str):
+    return input[0] == str
+
+def flattenc(stack: deque, st: str):
+    if len(stack) >= len(st):
+        return ''.join([str(s) for s in stack[-len(st):]]) == st
+    else:
+        return False
+
+def parse(string: str, stack: list[str|nt]):
+
+    input: deque = deque([c for c in string])
+    below_a: set = {'$', '(', '|', 'T'}
+
+    input.append('⊣')
+    flag = False    
+
+    while(not flag):
+        if (not (str(input[0]) if len(input) > 0 else '|') in {'|', '(', ')', '*', '⊣', '\\'} and below(stack, below_a, 1)): # case a
+            stack.append(input[0])
+            input.popleft()
+
+        elif (curr(input, '(') and below(stack, below_a, 1)):
+            stack.append('(')
+            input.popleft()
+            
+        elif (curr(input, ')') and below(stack, {'E'}, 1)):
+            stack.append(')')
+            input.popleft()
+            
+        elif (curr(input, '|') and below(stack, {'E'}, 1)):
+            stack.append('|')
+            input.popleft()
+            
+        elif (curr(input, '*') and below(stack, {'P'}, 1)):
+            stack.append('*')
+            input.popleft()
+
+        elif (flattenc(stack, 'E|M')):
+            m: nt = stack.pop() 
+            stack.pop()
+            e: nt = stack.pop()
+
+            push: nt = nt('E', union(e.tree, m.tree))
+            stack.append(push)
+
+        elif (flattenc(stack, 'M') and below(stack, {'$', '('})):
+            m: nt = stack.pop()
+
+            push: nt = nt('E', m.tree)
+            stack.append(push)
+
+        elif (below(stack, {'$', '(', '|'}, 1) and next(input, {'|', ')', '⊣'})):
+            push: nt = nt('M', epsilon())
+            stack.append(push)
+
+        elif (stack_is(stack, 'T') and next(input, {'|', ')', '⊣'})):
+            t: nt = stack.pop()
+
+            push: nt = nt('M', t.tree)
+            stack.append(push)
+
+        elif (flattenc(stack, 'TF')):
+            f: nt = stack.pop()
+            t: nt = stack.pop()
+
+            push: nt = nt('T', concat(t.tree, f.tree))
+            stack.append(push)
+
+        elif (stack_is(stack, 'F') and below(stack, {'$', '(', '|'})):
+            f: nt = stack.pop()
+            
+            push: nt = nt('T', f.tree)
+            stack.append(push)
+            
+        elif (flattenc(stack, 'P*')):
+            stack.pop()
+            p: nt = stack.pop()
+            
+            push: nt = nt('F', star(p.tree))
+            stack.append(push)
+        
+        elif (stack_is(stack, 'P') and not next(input, {'*'}, 0)):
+            p: nt = stack.pop()
+
+            push: nt = nt('F', p.tree)
+            stack.append(push)
+
+        elif (not str(stack[-1]) in {'|', '(', ')', '*', '⊣', '\\'} and not type(stack[-1]) is nt):
+            a: str = stack.pop()
+
+            push: nt = nt('P', symbol(a))
+            stack.append(push)
+
+        elif (flattenc(stack, '(E)')):
+            stack.pop()
+            e: nt = stack.pop()
+            stack.pop()
+            
+            push: nt = nt('P', e.tree)
+            stack.append(push)
+        else:
+            try:
+                if stack[1].value == 'E':
+                    flag = True
+            except:
+                continue
+    return stack
+                
+
+def main(regex=sys.argv[1]):
+    stack: list = parse(regex, ['$'])
+
+    tree = (stack[1].tree)
+
+    print(tree)
+
+if __name__ == '__main__':
+    main()

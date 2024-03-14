@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+import sys
+import nfa
+
+def main(regex=sys.argv[1]):
+    reNFA: list = nfa.re_to_nfa(regex)
+    nfa.write(reNFA, sys.stdout)
+
+if __name__ == '__main__':
+    main()

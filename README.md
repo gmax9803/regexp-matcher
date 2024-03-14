@@ -2,7 +2,7 @@
 
 A regexp matcher coded in python.
 
-`src/` contains all the files necessary for the project.
+`cp2/` contains all the files necessary for the project.
 
 See `doc/` for the assignment information that was followed when creating this project.
 
