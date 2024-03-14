@@ -11,6 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Testing
-      run: ./tests/test-${GITHUB_HEAD_REF}.sh
+    - name: Testing CP2
+      run: ./tests/test-cp2.sh
     
