@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+import sys
+from collections import deque
+
+class NFA:
+    def __init__(self):
+        self.states:    set  = set()
+        self.alphabet:  set  = set('&') 
+        self.start:     str  = ''
+        self.accepts:   list = set()
+        self.transitions: dict(dict(set(str))) = {}
+
+    def read_nfa(self, name):
+        f = open(name, 'r')
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()
+        for state in lines[0].split():
+            self.states.add(state)
+        for letter in lines[1].split():
+            self.alphabet.add(letter)
+        self.start = lines[2].strip()
+        for state in lines[3].split():
+            self.accepts.add(state)
+        for state in self.states:
+            self.transitions[state] = {}
+            for letter in self.alphabet:
+                self.transitions[state][letter] = set()
+        for t in lines[4:]:
+            t = t.strip().split()
+            origin      = t[0]
+            char: str   = t[1]
+            destination = t[2]
+            self.transitions[origin][char].add(destination)
+
+    def write_nfa(self, name):
+        f = open(name, 'w')
+        f.write((' ').join(self.states) + '\n')
+        f.write((' ').join(self.alphabet) + '\n')
+        f.write(self.start + '\n')
+        f.write((' ').join(self.accepts) + '\n')
+        for state in self.transitions:
+            for char in self.transitions[state]:
+                for dest in self.transitions[state][char]:
+                    f.write(f"{state} {char} {dest}\n")
+    
+    def enclose_nfa(self, name):
+        for state in self.transitions:
+            if state in self.transitions[state]['&']:
+                self.transitions[state]['&'].remove(state)
+
+    def match_nfa(self, w: str):
+       #frontier layout                         = [(depthNo&, totalPath, state, transitionsOutOfState, routePath)]
+        frontier: list(tuple(int, str, str, list(str), list(str))) = deque([(0, '', self.start, self.transitions[self.start], (-1, f'q & {self.start}'))])
+       #visited layout                          = set((depthNo&, destinationState))
+        visited:   set(tuple(int, str))         = set()
+        path: dict(tuple(int, str))             = dict()
+        length = len(w)
+        while frontier:
+            curr = frontier.pop()
+            zero    = curr[0]
+            one     = curr[1]
+            two     = curr[2]
+            three   = curr[3]
+            four    = curr[4]
+            stateFork = self.transitions[two]
+            if one == w and two in self.accepts: return (True, four, path)
+            for transitions in self.alphabet:                   #look at each char in the alphabet as transitions
+                for dest in stateFork[transitions]: #look at each transition's possible destinations
+                    depth = zero
+                    if transitions != '&':
+                        depth += 1
+                    newRoute = (depth, f'{two} {transitions} {dest}')
+                    path[newRoute] = four 
+                    fork = self.transitions[dest]
+                    if transitions == '&':
+                        if (zero, dest) in visited: continue
+                        frontier.append((depth, one, dest, fork, newRoute))
+                        visited.add((depth, dest))
+                    elif zero != length and transitions == w[zero]: #check if the transition should be taken by looking at string input
+                        frontier.append((depth, f'{one}{transitions}', dest, fork, newRoute))
+                        visited.add((depth, dest))
+
+        return (False, four, path)
+
+def main(stream=sys.stdin):
+    nfa = NFA()
+    nfa.read_nfa(sys.argv[1])
+    #nfa.write_nfa(sys.argv[2])
+    status, finalTransition, path = nfa.match_nfa(sys.argv[2]) #map this
+    if status:
+        print('accept')
+        nextTuple = finalTransition
+        route = deque([])
+        while (nextTuple[0] > -1):
+            route.append(nextTuple)
+            nextTuple = path[nextTuple]
+        while route:
+            print(route.pop()[1])
+    else:
+        print('reject')
+        
+if __name__ == '__main__':
+    main()
+    

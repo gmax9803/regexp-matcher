@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+import sys
+
+from nfa import NFA, re_to_nfa, match
+
+def main(stream=sys.stdin):
+    regexp = sys.argv[1]
+
+    try:
+        file = open(sys.arg[2], 'r')
+    except:
+        file = stream
+
+    cow: NFA = re_to_nfa(regexp)
+
+    for line in file:
+        line = line.rstrip()
+        if(match(cow, line)[0]):
+            print(line)
+
+
+if __name__ == '__main__':
+    main()

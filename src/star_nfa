@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+import sys
+import nfa
+
+
+def main(stream=sys.stdin):
+    one = open(sys.argv[1], 'r')
+    star = nfa.star_nfa(nfa.read(one))
+    nfa.write(star, sys.stdout)
+
+if __name__ == '__main__':
+    main()
+    
